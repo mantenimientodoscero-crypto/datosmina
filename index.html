@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte Diario de Producción y Diesel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  :root{
+    --bg: #17191c;
+    --panel: #212429;
+    --panel-alt: #2a2e35;
+    --line: #383d46;
+    --yellow: #f5b700;
+    --yellow-dim: #7a5c05;
+    --blue: #4a7fd6;
+    --red: #d6483c;
+    --purple: #9b6fd6;
+    --green: #3fb87a;
+    --text: #ece9e2;
+    --text-muted: #969ca6;
+    --radius: 10px;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 60px;
+  }
+
+  .wrap{ max-width: 720px; margin: 0 auto; padding: 18px 16px 40px; }
+
+  .stripe{
+    height: 8px;
+    margin: 26px 0;
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--yellow) 0px, var(--yellow) 12px,
+      #1a1a1a 12px, #1a1a1a 24px
+    );
+    border-radius: 3px;
+    opacity: 0.9;
+  }
+
+  h1{
+    font-family:'Oswald', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 24px;
+    margin: 4px 0 4px;
+    color: var(--text);
+  }
+  .subtitle{
+    color: var(--text-muted);
+    font-size: 13.5px;
+    line-height: 1.5;
+    margin-bottom: 4px;
+  }
+
+  .meta-row{
+    display:flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .meta-field{ flex:1; min-width: 140px; }
+  .meta-field label{
+    display:block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-family:'Oswald', sans-serif;
+  }
+  .meta-field input{
+    width:100%;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+  }
+  .meta-field input[readonly]{
+    background: var(--panel-alt);
+    color: var(--text-muted);
+    cursor: default;
+  }
+  .meta-field input:focus{ outline: 2px solid var(--yellow); outline-offset: 1px; }
+
+  .section-title{
+    font-family:'Oswald', sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 17px;
+    margin-top: 4px;
+    color: var(--text);
+  }
+
+  /* Tabla de producción */
+  .prod-table{
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 12.5px;
+  }
+  .prod-table th{
+    font-family:'Oswald', sans-serif;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+  }
+  .prod-table td{
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+  }
+  .prod-table td.label{
+    text-align: left;
+    font-weight: 700;
+    color: var(--blue);
+    font-family:'Oswald', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+  }
+  .prod-table input{
+    width: 46px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 5px;
+    padding: 6px 2px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+  .prod-table input.stock{ color: var(--red); border-color: #6b2f2a; }
+  .prod-table input.viaje{ color: var(--purple); border-color: #4a3566; }
+  .prod-table input:focus{ outline: 2px solid var(--yellow); outline-offset: 1px; }
+
+  .group-row .group-label{
+    font-family:'Oswald', sans-serif;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--line);
+  }
+  .group-row .group-produccion{ color: var(--blue); text-align: left; }
+  .group-row .group-viajes{ color: var(--purple); text-align: center; border-left: 3px solid var(--yellow); }
+
+  .divider-col{ border-left: 3px solid var(--yellow) !important; }
+  #prodBody td:nth-child(4){ border-left: 3px solid var(--yellow); }
+  tfoot td:nth-child(4){ border-left: 3px solid var(--yellow); }
+  .prod-table tr.total-row td{
+    font-weight: 700;
+    background: var(--panel-alt);
+    border-top: 2px solid var(--yellow-dim);
+  }
+  .prod-table tr.total-row input{
+    font-weight: 700;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    width: 100%;
+  }
+
+  /* Consumo de diesel */
+  .diesel-box{
+    margin-top: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .diesel-row{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 14px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  .diesel-row:last-child{ border-bottom: none; }
+  .diesel-row .nombre{
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--green);
+    flex: 1;
+  }
+  .diesel-row input{
+    width: 100px;
+    background: var(--panel-alt);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 14px;
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .diesel-row input[readonly]{
+    color: var(--text-muted);
+    background: #23261f;
+  }
+  .diesel-row input:focus{ outline: 2px solid var(--yellow); outline-offset: 1px; }
+  .diesel-row .unidad{
+    font-size: 12px;
+    color: var(--text-muted);
+    width: 40px;
+  }
+
+  .rendimiento-box{
+    margin-top: 10px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 13.5px;
+  }
+  .rendimiento-box input{
+    width: 80px;
+    background: var(--panel-alt);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 9px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .rendimiento-box .resultado{
+    font-family:'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: var(--yellow);
+    font-size: 15px;
+  }
+
+  textarea{
+    width:100%;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: var(--radius);
+    padding: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    min-height: 80px;
+    resize: vertical;
+    margin-top: 10px;
+  }
+  textarea:focus{ outline: 2px solid var(--yellow); outline-offset: 1px; }
+
+  .submit-btn{
+    width:100%;
+    background: var(--yellow);
+    color: #1a1a1a;
+    border: none;
+    font-family:'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 15px;
+    border-radius: var(--radius);
+    margin-top: 22px;
+    cursor: pointer;
+    transition: filter 0.15s;
+  }
+  .submit-btn:hover{ filter: brightness(1.08); }
+  .submit-btn:disabled{ opacity: 0.5; cursor: default; }
+
+  .status-msg{
+    text-align:center;
+    font-size: 13.5px;
+    margin-top: 12px;
+    min-height: 18px;
+  }
+  .status-msg.ok{ color: #a4d9ac; }
+  .status-msg.err{ color: #f0a9a2; }
+
+  .footer-note{
+    text-align:center;
+    color: var(--text-muted);
+    font-size: 11.5px;
+    margin-top: 34px;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 480px){
+    .prod-table{ font-size: 11px; }
+    .prod-table input{ width: 36px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Reporte diario de producción y diesel</h1>
+  <div class="subtitle">Versión digital del formato de pizarrón. Los totales se calculan automáticamente.</div>
+
+  <div class="meta-row">
+    <div class="meta-field">
+      <label>Fecha</label>
+      <input type="text" id="fecha" readonly>
+    </div>
+    <div class="meta-field">
+      <label>Responsable</label>
+      <input type="text" id="responsable" placeholder="Nombre completo">
+    </div>
+  </div>
+
+  <div class="stripe"></div>
+
+  <div class="section-title">Producción y viajes a patio</div>
+  <table class="prod-table" id="prodTable">
+    <thead>
+      <tr class="group-row">
+        <th colspan="3" class="group-label group-produccion">Producción</th>
+        <th colspan="4" class="group-label group-viajes">Viajes a Patio</th>
+      </tr>
+      <tr>
+        <th style="text-align:left;">Producto</th>
+        <th>Producción SS</th>
+        <th>Stock</th>
+        <th class="divider-col">1er</th>
+        <th>2do</th>
+        <th>3ro</th>
+        <th>4to</th>
+      </tr>
+    </thead>
+    <tbody id="prodBody"></tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td class="label" style="color:var(--text);">TOTAL</td>
+        <td><input type="text" id="tot_prod" readonly></td>
+        <td><input type="text" id="tot_stock" readonly></td>
+        <td><input type="text" id="tot_v1" readonly></td>
+        <td><input type="text" id="tot_v2" readonly></td>
+        <td><input type="text" id="tot_v3" readonly></td>
+        <td><input type="text" id="tot_v4" readonly></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="stripe"></div>
+
+  <div class="section-title">Consumo de diesel</div>
+  <div class="diesel-box">
+    <div class="diesel-row">
+      <div class="nombre">Existencia</div>
+      <input type="number" id="d_existencia" placeholder="0">
+      <div class="unidad">L</div>
+    </div>
+    <div class="diesel-row">
+      <div class="nombre">Entrada</div>
+      <input type="number" id="d_entrada" placeholder="0">
+      <div class="unidad">L</div>
+    </div>
+    <div class="diesel-row">
+      <div class="nombre">Total</div>
+      <input type="text" id="d_total" readonly>
+      <div class="unidad">L</div>
+    </div>
+    <div class="diesel-row">
+      <div class="nombre">Consumo total del día</div>
+      <input type="number" id="d_consumo" placeholder="0">
+      <div class="unidad">L</div>
+    </div>
+    <div class="diesel-row">
+      <div class="nombre">Existencia final</div>
+      <input type="text" id="d_final" readonly>
+      <div class="unidad">L</div>
+    </div>
+  </div>
+
+  <div class="rendimiento-box">
+    <span>Rendimiento: consumo ÷</span>
+    <input type="number" id="d_referencia" placeholder="65">
+    <span>=</span>
+    <span class="resultado" id="d_rendimiento">—</span>
+  </div>
+
+  <div class="section-title" style="margin-top:24px;">Comentarios / observaciones</div>
+  <textarea id="comentarios" placeholder="Notas adicionales del turno..."></textarea>
+
+  <button class="submit-btn" id="submitBtn">Guardar y enviar</button>
+  <div class="status-msg" id="statusMsg"></div>
+  <div class="footer-note" id="downloadNote">Al presionar el botón, se descarga un archivo de respaldo, se abre WhatsApp con el reporte listo para elegir el grupo, y se abre tu correo hacia mantenimiento@zeomex.com.mx.</div>
+</div>
+
+<script>
+const PRODUCTOS = [
+  { id: "p4_6", nombre: "4-6" },
+  { id: "p6_12", nombre: "6-12" },
+  { id: "p14_40", nombre: "14-40" },
+  { id: "p30finos", nombre: "30 finos" },
+  { id: "pgranoypolvo", nombre: "Grano y polvo" },
+  { id: "ptrompo", nombre: "Trompo" }
+];
+
+function renderTabla(){
+  const body = document.getElementById('prodBody');
+  body.innerHTML = '';
+  PRODUCTOS.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="label">${p.nombre}</td>
+      <td><input type="number" min="0" class="prod" id="${p.id}_prod"></td>
+      <td><input type="number" min="0" class="stock" id="${p.id}_stock"></td>
+      <td><input type="number" min="0" class="viaje" id="${p.id}_v1"></td>
+      <td><input type="number" min="0" class="viaje" id="${p.id}_v2"></td>
+      <td><input type="number" min="0" class="viaje" id="${p.id}_v3"></td>
+      <td><input type="number" min="0" class="viaje" id="${p.id}_v4"></td>
+    `;
+    body.appendChild(tr);
+  });
+  document.querySelectorAll('#prodBody input').forEach(inp => {
+    inp.addEventListener('input', calcularTotales);
+  });
+}
+
+function sumCampo(sufijo){
+  return PRODUCTOS.reduce((acc, p) => {
+    const el = document.getElementById(`${p.id}_${sufijo}`);
+    const v = el && el.value ? parseFloat(el.value) : 0;
+    return acc + (isNaN(v) ? 0 : v);
+  }, 0);
+}
+
+function calcularTotales(){
+  document.getElementById('tot_prod').value = sumCampo('prod');
+  document.getElementById('tot_stock').value = sumCampo('stock');
+  document.getElementById('tot_v1').value = sumCampo('v1');
+  document.getElementById('tot_v2').value = sumCampo('v2');
+  document.getElementById('tot_v3').value = sumCampo('v3');
+  document.getElementById('tot_v4').value = sumCampo('v4');
+}
+
+function calcularDiesel(){
+  const existencia = parseFloat(document.getElementById('d_existencia').value) || 0;
+  const entrada = parseFloat(document.getElementById('d_entrada').value) || 0;
+  const consumo = parseFloat(document.getElementById('d_consumo').value) || 0;
+  const total = existencia + entrada;
+  const final = total - consumo;
+  document.getElementById('d_total').value = total;
+  document.getElementById('d_final').value = final;
+
+  const ref = parseFloat(document.getElementById('d_referencia').value);
+  const rendEl = document.getElementById('d_rendimiento');
+  if(ref && ref !== 0){
+    rendEl.textContent = (consumo / ref).toFixed(2);
+  } else {
+    rendEl.textContent = '—';
+  }
+}
+
+['d_existencia','d_entrada','d_consumo','d_referencia'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calcularDiesel);
+});
+
+function todayISO(){
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+const CORREO_MANTENIMIENTO = 'mantenimiento@zeomex.com.mx';
+
+function construirLineas(){
+  const lineas = [];
+  lineas.push('REPORTE DIARIO DE PRODUCCIÓN Y DIESEL');
+  lineas.push('=======================================');
+  lineas.push(`Fecha: ${document.getElementById('fecha').value}`);
+  lineas.push(`Responsable: ${document.getElementById('responsable').value || '-'}`);
+  lineas.push('');
+  lineas.push('PRODUCCIÓN Y VIAJES A PATIO');
+  PRODUCTOS.forEach(p => {
+    const prod = document.getElementById(`${p.id}_prod`).value || '0';
+    const stock = document.getElementById(`${p.id}_stock`).value || '0';
+    const v1 = document.getElementById(`${p.id}_v1`).value || '-';
+    const v2 = document.getElementById(`${p.id}_v2`).value || '-';
+    const v3 = document.getElementById(`${p.id}_v3`).value || '-';
+    const v4 = document.getElementById(`${p.id}_v4`).value || '-';
+    lineas.push(`- ${p.nombre}: Producción ${prod} | Stock ${stock} | Viajes ${v1}/${v2}/${v3}/${v4}`);
+  });
+  lineas.push(`TOTAL: Producción ${document.getElementById('tot_prod').value || 0} | Stock ${document.getElementById('tot_stock').value || 0} | Viajes ${document.getElementById('tot_v1').value || 0}/${document.getElementById('tot_v2').value || 0}/${document.getElementById('tot_v3').value || 0}/${document.getElementById('tot_v4').value || 0}`);
+  lineas.push('');
+  lineas.push('CONSUMO DE DIESEL');
+  lineas.push(`- Existencia: ${document.getElementById('d_existencia').value || 0} L`);
+  lineas.push(`- Entrada: ${document.getElementById('d_entrada').value || 0} L`);
+  lineas.push(`- Total: ${document.getElementById('d_total').value || 0} L`);
+  lineas.push(`- Consumo total del día: ${document.getElementById('d_consumo').value || 0} L`);
+  lineas.push(`- Existencia final: ${document.getElementById('d_final').value || 0} L`);
+  const ref = document.getElementById('d_referencia').value;
+  const rend = document.getElementById('d_rendimiento').textContent;
+  if(ref){
+    lineas.push(`- Rendimiento: ${document.getElementById('d_consumo').value || 0} ÷ ${ref} = ${rend}`);
+  }
+  lineas.push('');
+  lineas.push('COMENTARIOS / OBSERVACIONES');
+  lineas.push(document.getElementById('comentarios').value.trim() || '(sin comentarios)');
+  return lineas;
+}
+
+function abrirCorreo(){
+  const fecha = document.getElementById('fecha').value;
+  const asunto = `Reporte de producción y diesel - ${fecha}`;
+  const cuerpo = construirLineas().join('\n');
+  const mailtoUrl = `mailto:${CORREO_MANTENIMIENTO}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+  window.location.href = mailtoUrl;
+}
+
+function descargarRespaldo(){
+  const contenido = construirLineas().join('\n');
+  const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const fechaArchivo = document.getElementById('fecha').value.replace(/\//g, '-');
+  const responsable = (document.getElementById('responsable').value || 'sin_nombre').replace(/\s+/g,'_');
+  const nombreArchivo = `reporte_produccion_diesel_${fechaArchivo}_${responsable}.txt`;
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombreArchivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function abrirWhatsApp(){
+  const cuerpo = construirLineas().join('\n');
+  const url = `https://wa.me/?text=${encodeURIComponent(cuerpo)}`;
+  window.open(url, '_blank');
+}
+
+async function submitReporte(){
+  const btn = document.getElementById('submitBtn');
+  const statusMsg = document.getElementById('statusMsg');
+  const responsable = document.getElementById('responsable').value.trim();
+
+  if(!responsable){
+    statusMsg.textContent = 'Escribe el nombre del responsable.';
+    statusMsg.className = 'status-msg err';
+    return;
+  }
+
+  btn.disabled = true;
+  statusMsg.textContent = 'Preparando...';
+  statusMsg.className = 'status-msg';
+
+  try{
+    statusMsg.textContent = 'Reporte listo. Se guardó el respaldo, se abrió WhatsApp y tu correo.';
+    statusMsg.className = 'status-msg ok';
+    abrirWhatsApp();
+    descargarRespaldo();
+    abrirCorreo();
+  }catch(err){
+    statusMsg.textContent = 'Error al preparar el reporte. Intenta de nuevo.';
+    statusMsg.className = 'status-msg err';
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('fecha').value = todayISO();
+renderTabla();
+calcularTotales();
+calcularDiesel();
+document.getElementById('submitBtn').addEventListener('click', submitReporte);
+</script>
+</body>
+</html>
