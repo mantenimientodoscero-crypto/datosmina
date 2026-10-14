@@ -402,9 +402,10 @@
 
   <button class="submit-btn" id="submitBtn">Guardar y enviar</button>
   <div class="status-msg" id="statusMsg"></div>
-  <div class="footer-note" id="downloadNote">Al presionar el botón, se descarga un archivo de respaldo, se abre WhatsApp con el reporte listo para elegir el grupo, y se abre tu correo hacia mantenimiento@zeomex.com.mx.</div>
+  <div class="footer-note" id="downloadNote">Al presionar el botón, se genera una imagen de este reporte para enviarla por WhatsApp (elige el grupo), se descarga un respaldo y se abre tu correo con los datos hacia mantenimiento@zeomex.com.mx.</div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 const PRODUCTOS = [
   { id: "p4_6", nombre: "4-6" },
@@ -546,10 +547,58 @@ function descargarRespaldo(){
   URL.revokeObjectURL(url);
 }
 
-function abrirWhatsApp(){
-  const cuerpo = construirLineas().join('\n');
-  const url = `https://wa.me/?text=${encodeURIComponent(cuerpo)}`;
-  window.open(url, '_blank');
+async function capturarPantalla(){
+  // Captura la pantalla principal (sin botón, mensajes ni nota al pie) como imagen PNG
+  const target = document.querySelector('.wrap');
+  const canvas = await html2canvas(target, {
+    backgroundColor: '#17191c',
+    scale: 2,
+    useCORS: true,
+    ignoreElements: (el) =>
+      el.id === 'submitBtn' ||
+      el.id === 'statusMsg' ||
+      el.id === 'downloadNote'
+  });
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+}
+
+function nombreImagen(){
+  const fechaArchivo = document.getElementById('fecha').value.replace(/\//g, '-');
+  return `reporte_produccion_diesel_${fechaArchivo}.png`;
+}
+
+function descargarImagen(blob){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombreImagen();
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+// Devuelve true si se compartió por el menú nativo (celular), false si hubo que usar el método alterno
+async function enviarImagenWhatsApp(blob){
+  const archivo = new File([blob], nombreImagen(), { type: 'image/png' });
+  const fecha = document.getElementById('fecha').value;
+
+  if(navigator.canShare && navigator.canShare({ files: [archivo] })){
+    try{
+      await navigator.share({
+        files: [archivo],
+        title: 'Reporte de producción y diesel',
+        text: `Reporte de producción y diesel - ${fecha}`
+      });
+      return true;
+    }catch(err){
+      if(err && err.name === 'AbortError') return true; // el usuario cerró el menú
+    }
+  }
+  // Método alterno (computadora): descarga la imagen y abre WhatsApp Web para adjuntarla
+  descargarImagen(blob);
+  window.open('https://web.whatsapp.com/', '_blank');
+  return false;
 }
 
 async function submitReporte(){
@@ -564,15 +613,18 @@ async function submitReporte(){
   }
 
   btn.disabled = true;
-  statusMsg.textContent = 'Preparando...';
+  statusMsg.textContent = 'Preparando imagen del reporte...';
   statusMsg.className = 'status-msg';
 
   try{
-    statusMsg.textContent = 'Reporte listo. Se guardó el respaldo, se abrió WhatsApp y tu correo.';
-    statusMsg.className = 'status-msg ok';
-    abrirWhatsApp();
+    const blob = await capturarPantalla();
+    const compartida = await enviarImagenWhatsApp(blob);
     descargarRespaldo();
-    abrirCorreo();
+    statusMsg.textContent = compartida
+      ? 'Reporte listo. Se compartió la imagen y se abrirá tu correo con los datos.'
+      : 'Imagen descargada: adjúntala en el grupo de WhatsApp. Se abrirá tu correo con los datos.';
+    statusMsg.className = 'status-msg ok';
+    setTimeout(abrirCorreo, 600);
   }catch(err){
     statusMsg.textContent = 'Error al preparar el reporte. Intenta de nuevo.';
     statusMsg.className = 'status-msg err';
